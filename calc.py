@@ -1,4 +1,4 @@
-from main import NOTES
+from notes import NOTES
 
 natural_notes = [
     1,  # C

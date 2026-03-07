@@ -1,4 +1,4 @@
-from main import NOTES
+from notes import NOTES
 from colorama import Fore
 
 SCALES = {

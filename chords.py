@@ -1,10 +1,10 @@
-from main import NOTES, GUITAR_STRINGS, note_normal
+from notes import NOTES, GUITAR_STRINGS, note_normal
 from scales import SCALES, generate_scale
 from colorama import Fore
 import random
 import itertools
 import statistics
-import math
+# import math
 
 CHORDS = {
     "maj": [(1, 0), (3, 0), (5, 0)],
@@ -25,13 +25,13 @@ REGULAR_CHORDS = {k: v for k, v in CHORDS.items() if k not in ["sus2", "sus4"]}
 ATTS = 6  # how many chord shapes to generate per chord
 
 
-def generate_chord(base: int, scale: list[int], chord_positions) -> list[int]:
+def generate_chord(base: int, scale: list[int], chord_notes) -> list[int]:
     ret = []
-    for pos in chord_positions:
-        note = scale[(base + pos[0] - 1) % len(scale)] + pos[1]
-        if note > 12:
-            note -= 12
-        ret.append(note)
+    print(Fore.BLACK + str([NOTES[note] for note in scale]))
+    for pos in chord_notes:
+        assert base in scale
+        ret.append(note_normal(scale[(scale.index(base) + pos[0] - 1) % len(scale)] + pos[1]))
+    print(Fore.BLACK + str([NOTES[note] for note in ret]))
     return ret
 
 
@@ -44,6 +44,10 @@ def insert_over_x_array(start: int, arr: list):
     ret = ret[:6]
     # print(printable_tab(ret))
     return ret
+
+
+def quantify(cond, iterable):
+    return sum(map(cond, iterable))
 
 
 def printable_tab(tab) -> str:
@@ -100,22 +104,41 @@ def generate_guitar_tabs(chord, limit=10) -> list[tuple]:
                         for n in f
                     )
                 )  # removing barre chords with notes behind the barre
-                if sum(
-                    map(
-                        lambda x: (
-                            x == statistics.mode(filter(lambda p: p is not None, f))
-                        ),
-                        f,
-                    )
+                if quantify(
+                    lambda x: x == statistics.mode(filter(lambda p: p is not None, f)),
+                    f,
                 )
                 >= 3  # condition for barre chord
                 else (
-                    sum(map(lambda x: x is not None and x > 0, f)) < 5
+                    quantify(lambda x: x is not None and x > 0, f) < 5
                 )  # removing non-barre chords with 5 or more notes to hold down
             ),
             all_fingerings,
         )
     )
+
+    ### ATTEMPT 1 at filtering out subset duplicates
+    # all_fingerings = filter(  # filtering out tabs that are subsets of other tabs in the pool (same notes + additional x'ed strings)
+    #     lambda f: (
+    #         None not in f
+    #         or not any(
+    #             quantify(lambda x: x is None, n) > quantify(lambda x: x is None, f) and
+    #             all(f[i] in [n[i], None] for i in range(len(f)))
+    #             for n in all_fingerings
+    #         )
+    #     ),
+    #     all_fingerings,
+    # )
+
+    ### ATTEMPT 2 at filtering out subset duplicates
+    # def is_subset(a, b):
+    #     return a != b and all(x is None or x == y for x, y in zip(a, b))
+
+    # all_fingerings = list(
+    #     itertools.filterfalse(
+    #         lambda a: any(is_subset(a, b) for b in all_fingerings), all_fingerings
+    #     )
+    # )
 
     all_fingerings = sorted(  # "easiest-to-play" tabs (aka closest together) rank highest
         all_fingerings,
@@ -131,7 +154,7 @@ def generate_guitar_tabs(chord, limit=10) -> list[tuple]:
         reverse=True,
     )
 
-    print(Fore.BLACK + f"len {len(all_fingerings)}")
+    # print(Fore.BLACK + f"len {len(all_fingerings)}")
     if len(all_fingerings) < limit:
         print(Fore.RED + "Unable to generate desired number of tabs")
     return all_fingerings[:limit]
@@ -154,13 +177,13 @@ def main(debug=False):
     # amt = 1
     for n in range(amt):
         target_chords = MAJOR_CHORDS if n == amt - 1 and amt > 1 else REGULAR_CHORDS
-        chord_name, chord_positions = random.choice(list(target_chords.items()))
+        chord_name, chord_notes = random.choice(list(target_chords.items()))
         # chord_name, chord_positions = "maj", target_chords["maj"]
         if debug:
-            print(Fore.BLACK + f"{chord_name} {chord_positions}")
+            print(Fore.BLACK + f"{chord_name} {chord_notes}")
         base = random.randrange(len(scale))
         # base = 0
-        chord = generate_chord(base, scale, chord_positions)
+        chord = generate_chord(base, scale, chord_notes)
         if debug:
             print(Fore.BLACK + f"{NOTES[root]}{chord_name:4} {chord}")
         print(
