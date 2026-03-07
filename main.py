@@ -1,6 +1,5 @@
 import random
 import time
-from enum import Enum
 from colorama import Fore
 
 NOTES = {
@@ -20,10 +19,10 @@ NOTES = {
 
 GUITAR_STRINGS: list[int] = [
     5,  # E
-    12, # B
-    8,  # G
-    3,  # D
     10, # A
+    3,  # D
+    8,  # G
+    12, # B
     5   # E
 ] 
 
