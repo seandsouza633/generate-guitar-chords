@@ -7,32 +7,28 @@ import statistics
 # import math
 
 CHORDS = {
-    "maj": [(1, 0), (3, 0), (5, 0)],
-    "min": [(1, 0), (3, -1), (5, 0)],
-    "dim": [(1, 0), (3, -1), (5, -1)],
-    "aug": [(1, 0), (3, 1), (5, 0)],
-    "maj7": [(1, 0), (3, 0), (5, 0), (7, 0)],
-    "min7": [(1, 0), (3, -1), (5, 0), (7, -1)],
-    "dom7": [(1, 0), (3, 0), (5, 0), (7, -1)],
-    "sus2": [(1, 0), (2, 0), (5, 0)],
-    "sus4": [(1, 0), (4, 0), (5, 0)],
+    "maj": [0, 4, 7],
+    "min": [0, 3, 7],
+    "dim": [0, 3, 6],
+    "aug": [0, 4, 8],
+    "maj7": [0, 4, 7, 11],
+    "min7": [0, 3, 7, 10],
+    "dim7": [0, 3, 6, 9],
+    "dom7": [0, 4, 7, 10],
+    "sus2": [0, 2, 7],
+    "sus4": [0, 5, 7],
 }
 
-MAJOR_CHORDS = {k: v for k, v in CHORDS.items() if k in ["maj", "maj7"]}
+MAJOR_CHORDS = {k: v for k, v in CHORDS.items() if "maj" in k}
 
-REGULAR_CHORDS = {k: v for k, v in CHORDS.items() if k not in ["sus2", "sus4"]}
+REGULAR_CHORDS = {k: v for k, v in CHORDS.items() if "sus" not in k}
 
 ATTS = 6  # how many chord shapes to generate per chord
 
 
 def generate_chord(base: int, scale: list[int], chord_notes) -> list[int]:
-    ret = []
-    print(Fore.BLACK + str([NOTES[note] for note in scale]))
-    for pos in chord_notes:
-        assert base in scale
-        ret.append(note_normal(scale[(scale.index(base) + pos[0] - 1) % len(scale)] + pos[1]))
-    print(Fore.BLACK + str([NOTES[note] for note in ret]))
-    return ret
+    assert base in scale
+    return [note_normal(base + delta) for delta in chord_notes]
 
 
 ALL_STRING_COMBOS = [(i, i + n) for n in range(6, 2, -1) for i in range(7 - n)]
@@ -54,11 +50,11 @@ def printable_tab(tab) -> str:
     return " ".join([" x" if t is None else f"{t:2}" for t in tab])
 
 
-def generate_guitar_tabs(chord, limit=10) -> list[tuple]:
+def generate_guitar_tabs(chord, limit=10, debug=False) -> list[tuple]:
     all_string_positions = []
     for string in GUITAR_STRINGS:
         all_string_positions.append(
-            [fret for fret in range(0, 12) if note_normal(string + fret) in chord]
+            [fret for fret in range(0, 18) if note_normal(string + fret) in chord]
         )
     all_fingerings = []
     for start, end in ALL_STRING_COMBOS:
@@ -148,16 +144,38 @@ def generate_guitar_tabs(chord, limit=10) -> list[tuple]:
                 sum(1 for i in t if i == 0) * 0.5
                 - statistics.stdev(filter(lambda i: i is not None and i > 0, t))
                 + len(list(filter(lambda i: i is not None, t))) * 0.3
-                + random.random() * 0.2
+                # + random.random() * 0.2
             )
         ),
         reverse=True,
     )
 
     # print(Fore.BLACK + f"len {len(all_fingerings)}")
-    if len(all_fingerings) < limit:
+    if debug and len(all_fingerings) < limit:
         print(Fore.RED + "Unable to generate desired number of tabs")
     return all_fingerings[:limit]
+
+
+def group_alike_tabs(tab_groups: list[list[tuple]]):
+
+    def non_zero(tab: list):
+        return filter(lambda n: n is not None and n > 0, tab)
+
+    ret = []
+    for tab in tab_groups[0]:
+        group = [tab]
+        for i in range(1, len(tab_groups)):
+            group_center: float = statistics.mean(
+                [statistics.mean(non_zero(tab)) for tab in group]
+            )
+            ordered_candidates = sorted(
+                tab_groups[i],
+                key=(lambda t: abs(statistics.mean(non_zero(tab)) - group_center)),
+            )
+            group.append(ordered_candidates[0])
+        ret.append(group)
+    # print(Fore.BLACK + ret)
+    return ret
 
 
 def main(debug=False):
