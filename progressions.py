@@ -59,8 +59,7 @@ def main():
     tab_group_count = input(Fore.BLUE + "Desired count of tabs: " + Fore.WHITE)
     tab_group_count = int(tab_group_count) if tab_group_count != "" else 1
     tab_groups = group_alike_tabs(
-        [generate_guitar_tabs(chord, limit=999) for chord_numeral, chord in progression],
-        True
+        [generate_guitar_tabs(chord, limit=999) for chord_numeral, chord in progression]
     )[:tab_group_count]
     for i, tab_group in enumerate(tab_groups):
         print(Fore.GREEN + f"Tab group {i + 1}")
