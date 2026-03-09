@@ -2,7 +2,7 @@ from notes import NOTES, note_normal
 from scales import SCALES, generate_scale
 from chords import (
     CHORDS,
-    ATTS,
+    # ATTS,
     generate_chord,
     generate_guitar_tabs,
     printable_tab,
@@ -58,15 +58,20 @@ def main():
     progression = generate_progression(progression_str, scale)
     tab_group_count = input(Fore.BLUE + "Desired count of tabs: " + Fore.WHITE)
     tab_group_count = int(tab_group_count) if tab_group_count != "" else 1
-    tab_groups = group_alike_tabs([generate_guitar_tabs(chord, limit=999) for chord_numeral, chord in progression])[:tab_group_count]
+    tab_groups = group_alike_tabs(
+        [generate_guitar_tabs(chord, limit=999) for chord_numeral, chord in progression],
+        True
+    )[:tab_group_count]
     for i, tab_group in enumerate(tab_groups):
         print(Fore.GREEN + f"Tab group {i + 1}")
         print(Fore.WHITE + " E  A  D  G  B  E")
         for j, position in enumerate(progression):
             chord_numeral, chord = position
             print(
-                Fore.CYAN + chord_numeral
-                + Fore.BLUE + f" -> {' '.join([NOTES[note_normal(n)] for n in chord])}"
+                Fore.CYAN
+                + chord_numeral
+                + Fore.BLUE
+                + f" -> {' '.join([NOTES[note_normal(n)] for n in chord])}"
             )
             print(Fore.BLACK + printable_tab(tab_group[j]))
 

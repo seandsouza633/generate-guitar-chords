@@ -156,10 +156,14 @@ def generate_guitar_tabs(chord, limit=10, debug=False) -> list[tuple]:
     return all_fingerings[:limit]
 
 
-def group_alike_tabs(tab_groups: list[list[tuple]]):
+def group_alike_tabs(tab_groups: list[list[tuple]], debug=False):
 
     def non_zero(tab: list):
         return filter(lambda n: n is not None and n > 0, tab)
+
+    if debug:
+        for tab_group in tab_groups:
+            print(Fore.BLACK + str(tab_group))
 
     ret = []
     for tab in tab_groups[0]:
@@ -170,11 +174,13 @@ def group_alike_tabs(tab_groups: list[list[tuple]]):
             )
             ordered_candidates = sorted(
                 tab_groups[i],
-                key=(lambda t: abs(statistics.mean(non_zero(tab)) - group_center)),
+                key=(lambda t: abs(statistics.mean(non_zero(t)) - group_center)),
             )
             group.append(ordered_candidates[0])
         ret.append(group)
-    # print(Fore.BLACK + ret)
+    if debug:
+        for tab_group in ret:
+            print(Fore.BLACK + str(tab_group))
     return ret
 
 
