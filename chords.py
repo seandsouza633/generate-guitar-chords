@@ -26,8 +26,7 @@ REGULAR_CHORDS = {k: v for k, v in CHORDS.items() if "sus" not in k}
 ATTS = 6  # how many chord shapes to generate per chord
 
 
-def generate_chord(base: int, scale: list[int], chord_notes) -> list[int]:
-    assert base in scale
+def generate_chord(base: int, chord_notes) -> list[int]:
     return [note_normal(base + delta) for delta in chord_notes]
 
 
@@ -50,7 +49,7 @@ def printable_tab(tab) -> str:
     return " ".join([" x" if t is None else f"{t:2}" for t in tab])
 
 
-def generate_guitar_tabs(chord, limit=10, debug=False) -> list[tuple]:
+def generate_guitar_tabs(chord: list[int], limit=10, debug=False) -> list[tuple]:
     all_string_positions = []
     for string in GUITAR_STRINGS:
         all_string_positions.append(
@@ -63,6 +62,19 @@ def generate_guitar_tabs(chord, limit=10, debug=False) -> list[tuple]:
             for p in itertools.product(*all_string_positions[start:end])
         ]
         all_fingerings.extend(fingerings)
+
+    all_fingerings = filter(  # filtering out tabs where not every note is in the chord
+        lambda f: all(
+            note
+            in [
+                note_normal(GUITAR_STRINGS[i] + fret)
+                for i, fret in enumerate(f)
+                if fret is not None
+            ]
+            for note in chord
+        ),
+        all_fingerings,
+    )
 
     MAX_REACH = 2  # how many frets across the guitar which you can reach
     all_fingerings = filter(  # filtering out tabs where you would have to reach too far
@@ -174,7 +186,7 @@ def group_alike_tabs(tab_groups: list[list[tuple]], debug=False):
             )
             ordered_candidates = sorted(
                 tab_groups[i],
-                key=(lambda t: abs(statistics.mean(non_zero(t)) - group_center)),
+                key=(lambda t: abs(statistics.mean(non_zero(t)) - group_center) + random.normalvariate(0, 1)),
             )
             group.append(ordered_candidates[0])
         ret.append(group)
@@ -207,7 +219,7 @@ def main(debug=False):
             print(Fore.BLACK + f"{chord_name} {chord_notes}")
         base = random.randrange(len(scale))
         # base = 0
-        chord = generate_chord(base, scale, chord_notes)
+        chord = generate_chord(base, chord_notes)
         if debug:
             print(Fore.BLACK + f"{NOTES[root]}{chord_name:4} {chord}")
         print(
