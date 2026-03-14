@@ -1,15 +1,30 @@
-I IV V
-I V VI IV
-I IV VI V
-I VI IV V
-I VI II V
-I III IV V
-I II IV V
-I IV II V
-I III VI IV
-I V IV V
-I II V I
+I IV V I
+I V vi IV
+I IV vi V
+I vi IV V
+I vi ii V
+Imaj7 IV V7 I
+I iii IV V
+I ii V I
 I IV I V
-I VI III IV
-I VII VI V
-I II VI V
+I iii vi IV
+I V7 vi IV
+Imaj7 IVmaj7 V7 I
+I vi ii7 V7
+I IV ii V
+I III+ vi IV
+Imaj7 vi7 ii7 V7
+I IV vii° iii vi ii V I
+I iii VII IV
+I ii7 V7 Imaj7
+I IV bVII IV
+I V vi iii IV I IV V
+Imaj7 iii7 vi7 ii7 V7 I
+I IV vii°7 iii vi ii V7 I
+I bVII IV I
+I iii IV iv
+I V7 vi IVmaj7
+I IV ii7 V7 vi iii IV V
+Imaj7 IVmaj7 vii°7 iii7 vi7 ii7 V7 Imaj7
+I III+ IV iv I V7 I
+I vi IV ii V7 I

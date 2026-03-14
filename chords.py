@@ -10,7 +10,7 @@ from colorama import Fore
 import random
 import itertools
 import statistics
-# import math
+import math
 
 CHORDS = {
     "maj": [0, 4, 7],
@@ -20,6 +20,7 @@ CHORDS = {
     "maj7": [0, 4, 7, 11],
     "min7": [0, 3, 7, 10],
     "dim7": [0, 3, 6, 9],
+    "m7b5": [0, 3, 6, 10],
     "dom7": [0, 4, 7, 10],
     "sus2": [0, 2, 7],
     "sus4": [0, 5, 7],
@@ -54,12 +55,21 @@ def printable_tab(tab) -> str:
 
 
 def generate_guitar_tabs(
-    chord: list[int], tuning=STANDARD_TUNING, limit=10, debug=False
+    chord: list[int],
+    tuning=STANDARD_TUNING,
+    limit=10,
+    max_fret=17,
+    temperature=0.1,
+    debug=False,
 ) -> list[tuple]:
     all_string_positions = []
     for string in tuning:
         all_string_positions.append(
-            [fret for fret in range(0, 18) if note_normal(string + fret) in chord]
+            [
+                fret
+                for fret in range(max_fret + 1)
+                if note_normal(string + fret) in chord
+            ]
         )
     all_fingerings = []
     for start, end in ALL_STRING_COMBOS:
@@ -114,7 +124,7 @@ def generate_guitar_tabs(
                 (
                     all(
                         n is None
-                        or n < statistics.mode(filter(lambda p: p is not None, f))
+                        or n >= statistics.mode(filter(lambda p: p is not None, f))
                         for n in f
                     )
                 )  # removing barre chords with notes behind the barre
@@ -138,8 +148,8 @@ def generate_guitar_tabs(
                 # these weights for the different parts of the eval are arbitrarily chosen
                 sum(1 for i in t if i == 0) * 0.5
                 - statistics.stdev(filter(lambda i: i is not None and i > 0, t))
-                + len(list(filter(lambda i: i is not None, t))) * 0.3
-                # + random.random() * 0.2
+                + len(list(filter(lambda i: i is not None, t))) * 0.5
+                + random.random() * temperature
             )
         ),
         reverse=True,
@@ -176,7 +186,7 @@ def group_alike_tabs(tab_groups: list[list[tuple]], debug=False):
                     )
                 ),
             )
-            group.append(ordered_candidates[0])
+            group.append(ordered_candidates[math.floor(abs(random.normalvariate(0, 3)))])
         ret.append(group)
     if debug:
         for tab_group in ret:
@@ -218,10 +228,22 @@ def main(debug=False):
         + Fore.WHITE
     )
     tuning = convert_tuning(tuning_str) if tuning_str != "" else STANDARD_TUNING
-    amt = input(Fore.BLUE + "Number of chords: " + Fore.BLACK + "(leave blank for 4) " + Fore.WHITE)
+    amt = input(
+        Fore.BLUE
+        + "Number of chords: "
+        + Fore.BLACK
+        + "(leave blank for 4) "
+        + Fore.WHITE
+    )
     amt = int(amt) if amt != "" else 4
-    atts = input(Fore.BLUE + "Number of tabs per chord: " + Fore.BLACK + "(leave blank for 3) " + Fore.WHITE)
-    atts = int(atts) if atts != "" else 3
+    atts = input(
+        Fore.BLUE
+        + "Number of tabs per chord: "
+        + Fore.BLACK
+        + "(leave blank for 5) "
+        + Fore.WHITE
+    )
+    atts = int(atts) if atts != "" else 5
     assert amt >= 1
     for n in range(amt):
         target_chords = REGULAR_CHORDS
@@ -232,7 +254,9 @@ def main(debug=False):
             Fore.BLUE
             + f"{NOTES[chord[0]]} {chord_name} -> {' '.join([NOTES[note_normal(n)] for n in chord])}"
         )
-        tabs = generate_guitar_tabs(chord, tuning=tuning, limit=atts)
+        tabs = generate_guitar_tabs(
+            chord, tuning=tuning, max_fret=12, temperature=0.5, limit=atts
+        )
         print(Fore.WHITE + "".join([f"{NOTES[note]:^3}" for note in tuning]))
         for tab in tabs:
             print(Fore.BLACK + printable_tab(tab))

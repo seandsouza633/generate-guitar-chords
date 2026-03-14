@@ -16,6 +16,7 @@ from chords import (
 )
 from colorama import Fore
 import random
+import re
 
 NUMERAL_TO_NUM = {
     "I": 1,
@@ -45,30 +46,77 @@ GREEK_MODES = {
 DIVIDER = "-----"
 
 
+def fetch_chord(numeral: str) -> tuple[str, list[int]]:
+    is_major = numeral[0].isupper()
+
+    # Determine chord type from suffix
+    if "maj7" in numeral:
+        chord_name = "maj7" if is_major else "minmaj7"
+    elif "ø7" in numeral:
+        chord_name = "m7b5"
+    elif "°7" in numeral:
+        chord_name = "dim7"
+    elif "°" in numeral:
+        chord_name = "dim"
+    elif "+" in numeral:
+        chord_name = "aug"
+    elif "7" in numeral:
+        chord_name = "dom7" if is_major else "min7"
+    elif "sus2" in numeral:
+        chord_name = "sus2"
+    elif "sus4" in numeral:
+        chord_name = "sus4"
+    elif "add9" in numeral:
+        chord_name = "maj_add9" if is_major else "min_add9"
+    elif "add6" in numeral:
+        chord_name = "maj_add6" if is_major else "min_add6"
+    else:
+        chord_name = "maj" if is_major else "min"
+
+    chord_notes = list(CHORDS[chord_name])
+
+    # Apply root accidental from prefix only
+    prefix_match = re.match(r"^([b#]*)", numeral)
+    prefix = prefix_match.group(1) if prefix_match else ""
+
+    if "bb" in prefix:
+        chord_notes[0] -= 2
+        chord_name = "bb" + chord_name
+    elif "b" in prefix:
+        chord_notes[0] -= 1
+        chord_name = "b" + chord_name
+    elif "##" in prefix:
+        chord_notes[0] += 2
+        chord_name = "##" + chord_name
+    elif "#" in prefix:
+        chord_notes[0] += 1
+        chord_name = "#" + chord_name
+
+    return chord_name, chord_notes
+
+
 def generate_progression(
     progression_str: str, base: int, scale_str: str
 ) -> list[tuple]:
-    assert all(
-        num.upper() in NUMERAL_TO_NUM.keys() for num in progression_str.split(" ")
-    )
     assert scale_str in ["major", "minor"]
     scale = generate_scale(base, SCALES[scale_str])
     # print(Fore.BLACK + str(scale))
     ret = []
     for numeral in progression_str.split(" "):
-        num = NUMERAL_TO_NUM[numeral.upper()]
-        # print(Fore.BLACK + str(num))
-        chord_name = random.choice(
-            list(filter(lambda c: MODES[scale_str][num - 1] in c, set(CHORDS.keys())))
-        )
-        # chord_name = MODES[scale_str][num - 1]
-        chord_notes = CHORDS[chord_name]
-        # print(chord_notes)
-        # print(f"Root: {NOTES[scale[num - 1]]}")
+        roman_match = re.match(r'^[b#]*([IViv]+)', numeral)
+        if not roman_match:
+            raise ValueError(f"Could not extract Roman numeral from: {numeral}")
+
+        roman_part = roman_match.group(1).upper()
+        if roman_part not in NUMERAL_TO_NUM:
+            raise ValueError(f"Unrecognized Roman numeral: {roman_part}")
+
+        num = NUMERAL_TO_NUM[roman_part]
+        chord_name, chord_notes = fetch_chord(numeral)
         ret.append(
             (
                 numeral,
-                f"{NOTES[scale[num - 1]]}{chord_name}",
+                f"{NOTES[scale[num - 1]]} {chord_name}",
                 generate_chord(scale[num - 1], chord_notes),
             )
         )
@@ -100,7 +148,7 @@ def main():
         print(Fore.BLACK + f"Randomly selected scale: {scale_str}")
     progression_str = input(
         Fore.BLUE
-        + "Input progression: "
+        + "Input progression (these are case sensitive): "
         + Fore.BLACK
         + "(leave blank for random) "
         + Fore.WHITE
@@ -128,7 +176,7 @@ def main():
     tuning = convert_tuning(tuning_str) if tuning_str != "" else STANDARD_TUNING
     tab_groups = group_alike_tabs(
         [
-            generate_guitar_tabs(chord, tuning=tuning, limit=999)
+            generate_guitar_tabs(chord, tuning=tuning, max_fret=11, limit=999)
             for chord_numeral, chord_name, chord in progression
         ]
     )[:tab_group_count]
