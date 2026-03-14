@@ -1,4 +1,10 @@
-from notes import NOTES, note_normal
+from notes import (
+    NOTES,
+    note_normal,
+    STANDARD_TUNING,
+    convert_tuning,
+    convert_from_note_str,
+)
 from scales import SCALES, generate_scale
 from chords import (
     CHORDS,
@@ -38,7 +44,10 @@ GREEK_MODES = {
 
 DIVIDER = "-----"
 
-def generate_progression(progression_str: str, base: int, scale_str: str) -> list[tuple]:
+
+def generate_progression(
+    progression_str: str, base: int, scale_str: str
+) -> list[tuple]:
     assert all(
         num.upper() in NUMERAL_TO_NUM.keys() for num in progression_str.split(" ")
     )
@@ -67,24 +76,59 @@ def generate_progression(progression_str: str, base: int, scale_str: str) -> lis
 
 
 def main():
-    root = input(Fore.BLUE + "Desired root: " + Fore.WHITE).lower()
-    try:
-        root = next(k for k in NOTES.keys() if NOTES[k].lower() == root)
-    except StopIteration:
-        print(Fore.RED + "No key found.")
-        return
-    scale_str = input(Fore.BLUE + "Key major or minor: " + Fore.WHITE).lower()
-    progression_str = input(Fore.BLUE + "Input progression: " + Fore.WHITE).rstrip()
+    root = input(
+        Fore.BLUE
+        + "Desired root: "
+        + Fore.BLACK
+        + "(leave blank for random) "
+        + Fore.WHITE
+    )
+    if root == "":
+        root = random.randint(1, 12)
+        print(Fore.BLACK + f"Randomly selected root note: {NOTES[root]}")
+    else:
+        root = convert_from_note_str(root)
+    scale_str = input(
+        Fore.BLUE
+        + "Key major or minor: "
+        + Fore.BLACK
+        + "(leave blank for random) "
+        + Fore.WHITE
+    ).lower()
+    if scale_str == "":
+        scale_str = random.choice(["major", "minor"])
+        print(Fore.BLACK + f"Randomly selected scale: {scale_str}")
+    progression_str = input(
+        Fore.BLUE
+        + "Input progression: "
+        + Fore.BLACK
+        + "(leave blank for random) "
+        + Fore.WHITE
+    ).strip()
     if progression_str == "":
         with open(f"progressions/{scale_str}_progressions.txt", "r") as f:
-            progression_str = random.choice(f.readlines()).rstrip()
+            progression_str = random.choice(f.readlines()).strip()
         print(Fore.BLACK + f"Randomly selected progression: {progression_str}")
     progression = generate_progression(progression_str, root, scale_str)
-    tab_group_count = input(Fore.BLUE + "Desired count of tabs: " + Fore.WHITE)
-    tab_group_count = int(tab_group_count) if tab_group_count != "" else 1
+    tab_group_count = input(
+        Fore.BLUE
+        + "Desired count of tabs: "
+        + Fore.BLACK
+        + "(leave blank for 3) "
+        + Fore.WHITE
+    )
+    tab_group_count = min(50, int(tab_group_count)) if tab_group_count != "" else 3
+    tuning_str = input(
+        Fore.BLUE
+        + "Desired tuning: "
+        + Fore.BLACK
+        + "(leave blank for standard) "
+        + Fore.WHITE
+    )
+    tuning = convert_tuning(tuning_str) if tuning_str != "" else STANDARD_TUNING
     tab_groups = group_alike_tabs(
         [
-            generate_guitar_tabs(chord, limit=999)
+            generate_guitar_tabs(chord, tuning=tuning, limit=999)
             for chord_numeral, chord_name, chord in progression
         ]
     )[:tab_group_count]
@@ -96,7 +140,7 @@ def main():
     )
     for i, tab_group in enumerate(tab_groups):
         print(Fore.GREEN + f"Tab group {i + 1}")
-        print(Fore.WHITE + " E  A  D  G  B  E")
+        print(Fore.WHITE + "".join([f"{NOTES[note]:^3}" for note in tuning]))
         for j, position in enumerate(progression):
             chord_numeral, chord_name, chord = position
             print(

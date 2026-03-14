@@ -1,4 +1,10 @@
-from notes import NOTES, GUITAR_STRINGS, note_normal
+from notes import (
+    NOTES,
+    STANDARD_TUNING,
+    note_normal,
+    convert_from_note_str,
+    convert_tuning,
+)
 from scales import SCALES, generate_scale
 from colorama import Fore
 import random
@@ -22,8 +28,6 @@ CHORDS = {
 MAJOR_CHORDS = {k: v for k, v in CHORDS.items() if "maj" in k}
 
 REGULAR_CHORDS = {k: v for k, v in CHORDS.items() if "sus" not in k}
-
-ATTS = 6  # how many chord shapes to generate per chord
 
 
 def generate_chord(base: int, chord_notes) -> list[int]:
@@ -49,9 +53,11 @@ def printable_tab(tab) -> str:
     return " ".join([" x" if t is None else f"{t:2}" for t in tab])
 
 
-def generate_guitar_tabs(chord: list[int], limit=10, debug=False) -> list[tuple]:
+def generate_guitar_tabs(
+    chord: list[int], tuning=STANDARD_TUNING, limit=10, debug=False
+) -> list[tuple]:
     all_string_positions = []
-    for string in GUITAR_STRINGS:
+    for string in tuning:
         all_string_positions.append(
             [fret for fret in range(0, 18) if note_normal(string + fret) in chord]
         )
@@ -67,7 +73,7 @@ def generate_guitar_tabs(chord: list[int], limit=10, debug=False) -> list[tuple]
         lambda f: all(
             note
             in [
-                note_normal(GUITAR_STRINGS[i] + fret)
+                note_normal(tuning[i] + fret)
                 for i, fret in enumerate(f)
                 if fret is not None
             ]
@@ -125,29 +131,6 @@ def generate_guitar_tabs(chord: list[int], limit=10, debug=False) -> list[tuple]
         )
     )
 
-    ### ATTEMPT 1 at filtering out subset duplicates
-    # all_fingerings = filter(  # filtering out tabs that are subsets of other tabs in the pool (same notes + additional x'ed strings)
-    #     lambda f: (
-    #         None not in f
-    #         or not any(
-    #             quantify(lambda x: x is None, n) > quantify(lambda x: x is None, f) and
-    #             all(f[i] in [n[i], None] for i in range(len(f)))
-    #             for n in all_fingerings
-    #         )
-    #     ),
-    #     all_fingerings,
-    # )
-
-    ### ATTEMPT 2 at filtering out subset duplicates
-    # def is_subset(a, b):
-    #     return a != b and all(x is None or x == y for x, y in zip(a, b))
-
-    # all_fingerings = list(
-    #     itertools.filterfalse(
-    #         lambda a: any(is_subset(a, b) for b in all_fingerings), all_fingerings
-    #     )
-    # )
-
     all_fingerings = sorted(  # "easiest-to-play" tabs (aka closest together) rank highest
         all_fingerings,
         key=(
@@ -186,7 +169,12 @@ def group_alike_tabs(tab_groups: list[list[tuple]], debug=False):
             )
             ordered_candidates = sorted(
                 tab_groups[i],
-                key=(lambda t: abs(statistics.mean(non_zero(t)) - group_center) + random.normalvariate(0, 1)),
+                key=(
+                    lambda t: (
+                        abs(statistics.mean(non_zero(t)) - group_center)
+                        + random.normalvariate(0, 1)
+                    )
+                ),
             )
             group.append(ordered_candidates[0])
         ret.append(group)
@@ -197,38 +185,55 @@ def group_alike_tabs(tab_groups: list[list[tuple]], debug=False):
 
 
 def main(debug=False):
-    root = input(Fore.BLUE + "Desired root: " + Fore.WHITE).lower()
-    try:
-        root = next(k for k in NOTES.keys() if NOTES[k].lower() == root)
-    except StopIteration:
-        print(Fore.RED + "No key found.")
-        return
-    scale_name = random.choice(list(SCALES.keys()))
-    # scale_name = "major"
-    scale: list[int] = generate_scale(root, SCALES[scale_name])
-    print(Fore.BLUE + f"Scale: {scale_name}")
+    root = input(
+        Fore.BLUE
+        + "Desired root: "
+        + Fore.BLACK
+        + "(leave blank for random) "
+        + Fore.WHITE
+    )
+    if root == "":
+        root = random.randint(1, 12)
+        print(Fore.BLACK + f"Randomly selected root note: {NOTES[root]}")
+    else:
+        root = convert_from_note_str(root)
+    scale_str = input(
+        Fore.BLUE
+        + "Key major or minor: "
+        + Fore.BLACK
+        + "(leave blank for random) "
+        + Fore.WHITE
+    ).lower()
+    if scale_str == "":
+        scale_str = random.choice(["major", "minor"])
+        print(Fore.BLACK + f"Randomly selected scale: {scale_str}")
+    scale: list[int] = generate_scale(root, SCALES[scale_str])
     if debug:
         print(Fore.BLACK + str([NOTES[n] for n in scale]))
-    amt = 4
-    # amt = 1
+    tuning_str = input(
+        Fore.BLUE
+        + "Desired tuning: "
+        + Fore.BLACK
+        + "(leave blank for standard) "
+        + Fore.WHITE
+    )
+    tuning = convert_tuning(tuning_str) if tuning_str != "" else STANDARD_TUNING
+    amt = input(Fore.BLUE + "Number of chords: " + Fore.BLACK + "(leave blank for 4) " + Fore.WHITE)
+    amt = int(amt) if amt != "" else 4
+    atts = input(Fore.BLUE + "Number of tabs per chord: " + Fore.BLACK + "(leave blank for 3) " + Fore.WHITE)
+    atts = int(atts) if atts != "" else 3
+    assert amt >= 1
     for n in range(amt):
-        target_chords = MAJOR_CHORDS if n == amt - 1 and amt > 1 else REGULAR_CHORDS
+        target_chords = REGULAR_CHORDS
         chord_name, chord_notes = random.choice(list(target_chords.items()))
-        # chord_name, chord_positions = "maj", target_chords["maj"]
-        if debug:
-            print(Fore.BLACK + f"{chord_name} {chord_notes}")
         base = random.randrange(len(scale))
-        # base = 0
         chord = generate_chord(base, chord_notes)
-        if debug:
-            print(Fore.BLACK + f"{NOTES[root]}{chord_name:4} {chord}")
         print(
             Fore.BLUE
-            + f"{NOTES[root]}{chord_name} -> {' '.join([NOTES[note_normal(n)] for n in chord])}"
+            + f"{NOTES[chord[0]]} {chord_name} -> {' '.join([NOTES[note_normal(n)] for n in chord])}"
         )
-        tabs = generate_guitar_tabs(chord, limit=ATTS)
-        # print(f"Tabs count {len(tabs)}")
-        print(Fore.WHITE + " E  A  D  G  B  E")
+        tabs = generate_guitar_tabs(chord, tuning=tuning, limit=atts)
+        print(Fore.WHITE + "".join([f"{NOTES[note]:^3}" for note in tuning]))
         for tab in tabs:
             print(Fore.BLACK + printable_tab(tab))
 
