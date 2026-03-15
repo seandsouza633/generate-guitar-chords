@@ -10,7 +10,7 @@ from colorama import Fore
 import random
 import itertools
 import statistics
-import math
+import math  # noqa: F401
 
 CHORDS = {
     "maj": [0, 4, 7],
@@ -163,30 +163,41 @@ def generate_guitar_tabs(
 
 def group_alike_tabs(tab_groups: list[list[tuple]], debug=False):
 
-    def non_zero(tab: list):
-        return filter(lambda n: n is not None and n > 0, tab)
-
     if debug:
         for tab_group in tab_groups:
             print(Fore.BLACK + str(tab_group))
+
+    def non_zero(tab: list):
+        return list(filter(lambda n: n is not None and n > 0, tab))
+
+    def transition_cost(last: list, candidate: list) -> float:
+        last_frets = non_zero(last)
+        cand_frets = non_zero(candidate)
+
+        # Per-string delta (structural change)
+        string_delta = sum(
+            abs(a - b)
+            for a, b in zip(last, candidate)
+            if a is not None and a > 0 and b is not None and b > 0
+        )
+
+        # Overall center drift
+        center_drift = 0
+        if last_frets and cand_frets:
+            center_drift = abs(statistics.mean(last_frets) - statistics.mean(cand_frets))
+
+        return string_delta + 0.5 * center_drift
 
     ret = []
     for tab in tab_groups[0]:
         group = [tab]
         for i in range(1, len(tab_groups)):
-            group_center: float = statistics.mean(
-                [statistics.mean(non_zero(tab)) for tab in group]
-            )
+            last_tab = group[-1]
             ordered_candidates = sorted(
                 tab_groups[i],
-                key=(
-                    lambda t: (
-                        abs(statistics.mean(non_zero(t)) - group_center)
-                        + random.normalvariate(0, 1)
-                    )
-                ),
+                key=lambda t: transition_cost(last_tab, t)
             )
-            group.append(ordered_candidates[math.floor(abs(random.normalvariate(0, 3)))])
+            group.append(ordered_candidates[0])
         ret.append(group)
     if debug:
         for tab_group in ret:
@@ -255,7 +266,7 @@ def main(debug=False):
             + f"{NOTES[chord[0]]} {chord_name} -> {' '.join([NOTES[note_normal(n)] for n in chord])}"
         )
         tabs = generate_guitar_tabs(
-            chord, tuning=tuning, max_fret=12, temperature=0.5, limit=atts
+            chord, tuning=tuning, max_fret=12, temperature=0.2, limit=atts
         )
         print(Fore.WHITE + "".join([f"{NOTES[note]:^3}" for note in tuning]))
         for tab in tabs:
